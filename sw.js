@@ -1,5 +1,5 @@
 const CACHE='stephano-tiles-v1';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
+const ASSETS=['./','./index.html','./manifest.webmanifest'];
 
 self.addEventListener('install',e=>
   e.waitUntil(

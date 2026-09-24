@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="85" fill="#000"/>
+<circle cx="256" cy="218" r="147" fill="#b58a2a"/>
+<path d="M165 275L219 130 256 229 293 130 347 275H306L288 221 256 299 224 221 206 275Z" fill="#fff"/>
+<text x="256" y="388" text-anchor="middle" font-family="Arial" font-size="35" font-weight="bold" fill="#fff">STEPHANO</text>
+<text x="256" y="430" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold" fill="#b58a2a">TILES-LAYER</text>
+</svg>

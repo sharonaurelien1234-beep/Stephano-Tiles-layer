@@ -686,6 +686,250 @@ $("print").onclick=()=>{
 })();
 </script> 
   <script>
+(function(){
+  const menuQuotes = document.getElementById("menuQuotes");
+  if(!menuQuotes) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #quotesOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:9999;
+      display:none;
+      padding:20px;
+      overflow:auto;
+    }
+    #quotesBox{
+      max-width:900px;
+      margin:20px auto;
+      background:#fff;
+      border-radius:18px;
+      padding:20px;
+      box-shadow:0 15px 50px rgba(0,0,0,.25);
+    }
+    #quotesBox h2{
+      margin:0 0 15px;
+      color:#171717;
+    }
+    #quotesSearch{
+      margin-bottom:15px;
+    }
+    .savedQuote{
+      border:1px solid #e5dfd2;
+      border-left:5px solid #b58a2a;
+      border-radius:12px;
+      padding:14px;
+      margin:10px 0;
+      background:#fff;
+    }
+    .savedQuoteHead{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+    }
+    .savedQuoteTotal{
+      font-weight:900;
+      color:#8b6a1e;
+    }
+    .quoteButtons{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+    .quoteButtons button{
+      margin-top:0;
+    }
+    @media(max-width:650px){
+      #quotesOverlay{padding:10px}
+      #quotesBox{margin:5px auto;padding:15px}
+      .savedQuoteHead{flex-direction:column;align-items:flex-start}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement("div");
+  overlay.id = "quotesOverlay";
+  overlay.innerHTML = `
+    <div id="quotesBox">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2>📂 Mes devis</h2>
+        <button type="button" id="closeQuotes" class="light" style="width:auto;margin-top:0;padding:9px 14px">✕ Fermer</button>
+      </div>
+
+      <input
+        id="quotesSearch"
+        type="search"
+        placeholder="🔎 Rechercher un client ou un numéro de devis"
+      >
+
+      <div id="quotesList"></div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const list = document.getElementById("quotesList");
+  const search = document.getElementById("quotesSearch");
+
+  function getQuotes(){
+    try{
+      return JSON.parse(localStorage.getItem("STL_QUOTES") || "[]");
+    }catch(e){
+      return [];
+    }
+  }
+
+  function calculateTotal(data){
+    return (data.rooms || []).reduce((total,r)=>{
+      const qty = (r.w==="sol" || r.w==="mural") ? r.sqft : r.net;
+      return total + qty * r.price;
+    },0);
+  }
+
+  function moneyQuotes(n){
+    return Number(n || 0).toLocaleString("fr-FR",{
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function renderQuotes(){
+    const term = (search.value || "").trim().toLowerCase();
+    let quotes = getQuotes();
+
+    quotes = quotes.filter(q =>
+      String(q.client || "").toLowerCase().includes(term) ||
+      String(q.quoteNo || "").toLowerCase().includes(term)
+    );
+
+    if(!quotes.length){
+      list.innerHTML = `
+        <div class="panel">
+          <strong>Aucun devis enregistré.</strong>
+          <p class="muted">
+            Enregistre d'abord un devis avec le bouton
+            « 💾 Enregistrer le devis ».
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = quotes.map((q,index)=>{
+      const total = calculateTotal(q);
+
+      return `
+        <div class="savedQuote">
+          <div class="savedQuoteHead">
+            <div>
+              <strong>${q.quoteNo || "Sans numéro"}</strong>
+              <div class="muted">
+                Client : ${q.client || "—"}<br>
+                Date : ${q.date || "—"}
+              </div>
+            </div>
+
+            <div class="savedQuoteTotal">
+              Rs ${moneyQuotes(total)}
+            </div>
+          </div>
+
+          <div class="quoteButtons">
+            <button type="button" class="light" data-action="view" data-index="${index}">
+              👁 Voir
+            </button>
+
+            <button type="button" class="red" data-action="delete" data-index="${index}">
+              🗑 Supprimer
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    list.querySelectorAll("[data-action='delete']").forEach(btn=>{
+      btn.onclick=()=>{
+        const quotes=getQuotes();
+        const index=Number(btn.dataset.index);
+        const quote=quotes[index];
+
+        if(!quote) return;
+
+        if(confirm("Supprimer le devis "+(quote.quoteNo || "")+" ?")){
+          quotes.splice(index,1);
+          localStorage.setItem("STL_QUOTES",JSON.stringify(quotes));
+          if(quote.quoteNo){
+            localStorage.removeItem("STL_"+quote.quoteNo);
+          }
+          renderQuotes();
+        }
+      };
+    });
+
+    list.querySelectorAll("[data-action='view']").forEach(btn=>{
+      btn.onclick=()=>{
+        const quotes=getQuotes();
+        const q=quotes[Number(btn.dataset.index)];
+        if(!q) return;
+
+        alert(
+          "DEVIS : "+(q.quoteNo || "—")+
+          "\\nClient : "+(q.client || "—")+
+          "\\nTéléphone : "+(q.phone || "—")+
+          "\\nDate : "+(q.date || "—")+
+          "\\nAdresse : "+(q.address || "—")+
+          "\\nTotal : Rs "+moneyQuotes(calculateTotal(q))
+        );
+      };
+    });
+  }
+
+  menuQuotes.addEventListener("click",()=>{
+    overlay.style.display="block";
+    search.value="";
+    renderQuotes();
+  });
+
+  document.getElementById("closeQuotes").onclick=()=>{
+    overlay.style.display="none";
+  };
+
+  overlay.addEventListener("click",e=>{
+    if(e.target===overlay){
+      overlay.style.display="none";
+    }
+  });
+
+  search.addEventListener("input",renderQuotes);
+
+  const saveButton=document.getElementById("save");
+
+  if(saveButton){
+    saveButton.addEventListener("click",()=>{
+      setTimeout(()=>{
+        try{
+          const quoteNo=document.getElementById("quoteNo").value;
+          const saved=JSON.parse(localStorage.getItem("STL_"+quoteNo) || "null");
+
+          if(!saved) return;
+
+          let quotes=getQuotes();
+
+          quotes=quotes.filter(q=>q.quoteNo!==quoteNo);
+          quotes.unshift(saved);
+
+          localStorage.setItem("STL_QUOTES",JSON.stringify(quotes));
+        }catch(e){}
+      },100);
+    });
+  }
+})();
+</script>
+  <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('./sw.js').catch(function() {});
